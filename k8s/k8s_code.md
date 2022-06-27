@@ -1,5 +1,10 @@
 [TOC]
 
+
+## 模块关系
+
+![](arch.png)
+
 ## 目录树
 
 ```bash
@@ -46,6 +51,37 @@ kubernetes{
 
 ## kube-apiserver
 
+
+### 启动过程
+
+- 资源注册
+
+
+### 资源注册
+
+- 将k8s所支持的资源注册到Scheme资源注册表中
+```go 
+import "k8s.io/kubernetes/pkg/api/legacyscheme" // 通过 import 来注册资源
+```
+
+
+### 3种http服务
+
+- KubeAPIServer
+	- 核心服务，提供k8s内置核心资源服务，不允许开发者随意修改，如：Pod，Service等
+	- Master
+	- Legacyscheme.Scheme
+- APIExtensionsServer
+	- API扩展服务，该服务提供了CRD自定义资源服务
+	- CustomResourceDefinitions
+	- 
+
 ```go
+/*
+启动过程
+cmd/kube-apiserver/apiserver.go
+*/
+
+
 
 ```
