@@ -1,8 +1,7 @@
 [TOC]
 
-## 网络
 
-### Kubernetes 网络模型
+## Kubernetes 网络模型
 - IP-per-Pod模型
   - 一个Pod内部的所有容器共享一个网络堆栈
   - 相当于一个网络命名空间，它们的IP地址、网络设备、配置等都是共享的
@@ -16,7 +15,7 @@
     - 容器地址与别人看到的是同一个地址
 
 
-### Docker网络基础
+## Docker网络基础
 
 - Network Namespace
 - Veth设备对
@@ -52,42 +51,46 @@ ip netns list
 ethtool -k eth0 | grep netns-local # on为不能在网络空间中转移
 ```
 
-#### Veth设备对
+#### Veth Pair
 
-- 为了在不同的网络空间之间通信
-- 成对出现, 很像一对以太网卡，中间有一根直连的网线
+- 为了**在不同的网络空间之间通信**
+- 成对出现, **很像一对以太网卡，中间有一根直连的网线**
 - docker会把veth设备名字改为 eth0
 - 在docker内部, veth设备也是联通容器与宿主机的主要网络设备
 - 一旦将Veth设备对的对端放入另一个命名空间，在本命名空间中就 看不到它了
 
 ``` bash
 ip link add veth0 type veth peer name veth1  # 创建veth设备对
-# 如何查看veth设备的另一端?
+
+brctl show   # 查看网桥下的veth设备
 ```
 
 #### 网桥
 
-- 二层网络虚拟设备
+![bridge&veth关系图](http://assets.processon.com/chart_image/61bc630e7d9c0868e029bc2e.png)
+
+- 二层网络虚拟设备(虚机二层交换机)
 - 遇到未学习到的地址,  发广播包
 - 多netns连接, 如果相互创建veth pair, 会非常多, 可以使用网桥将其连接起来
+- docker默认会创建docker0的网桥, 凡是与docker0相连的容器, 都可以使用它来通讯
 - Linux网桥的实现
     - 内核是通过一个虚拟的网桥设备（Net Device）来实现桥接的
     - 这个虚拟设备可以绑定若干个以太网接口设备，从而将它们桥接起来
-- [bridge&veth关系图](https://www.processon.com/view/link/61baa1ed0e3e740ea737402c)
-- 操作指令
+
 ```bash
 yum install -y bridge-utils
-brctl show
+brctl show   # 网桥管理程序
 ```
-
 
 #### tun/tap设备
 
+- 给用户态一个机会
 - Linux文件系统的角度看，它是用户可以用文件句柄操作的字符设备
 - 从网络虚拟化角度看，它是虚拟网卡，一端连着网络协议栈，另一端连着用户态程序
-- tun表示虚拟的是点对点设备, tap表示虚拟的是以太网设备, 包封装不同
-- 协议栈处理好的包发给tun/tap进程, 由进程发给物理网络, tun/tap进程像用户态的钩子, 方便处理包
+- tun表示虚拟的是点对点设备, tap表示虚拟的是以太网设备, 两种设备包封装不同
+- tun/tap设备可以将协议栈处理好的包发给另一个使用tun/tap驱动的进程, 由进程重新处理后发给物理网络, tun/tap进程像埋在用户态的钩子
     - openvpn, vtun, fannel都是基于此实现隧道包封装
+- 对于tun/tap设备，它的数据源是用户态而非物理网卡, 最大价值是提前剧透
 
 .tun设备的/dev/tunX文件收发的是IP包
 ·tap设备的/dev/tapX文件收发的是链路层数据包
@@ -130,7 +133,16 @@ modprobe ipip   # 加载内核模块
 
 #### vxlan
 
-- 依托utp层构建的overlay的逻辑网络
+- fdb即二层mac表
+
+```bash
+
+# 创建名为vxlan0的接口, 也是vtep
+ip link add vxlan0 type vxlan id 42 group 239.1.1.1 dev ens33 dstport 4789
+ip link delete vxlan0       # 删除接口
+ip -d link show vxlan0      # 查看接口
+bridge fdb show dev vxlan0  # 查看接口转发表
+```
 
 
 #### macvlan
@@ -156,13 +168,13 @@ modprobe ipip   # 加载内核模块
     - L3
 
 
-### Docker网络实现
+## Docker网络实现
 
 - 四种模式
   - host模式
   - container模式
   - none模式
-  - bridge模式, k8s通常使用此模式
+  - **bridge模式**, k8s通常使用此模式
 
 - bridge模式下docker网络
   - docker daemon 第一次启动创建一个虚拟的网桥, 默认名称为**docker0网桥**
@@ -177,7 +189,7 @@ modprobe ipip   # 加载内核模块
   - Docker使用的Libnetwork组件只是将 Docker平台中的网络子系统模块化为一个独立库的简单尝试，
   - 离成熟和 完善还有一段距离
 
-### Kubernetes的网络实现
+## Kubernetes的网络实现
 
 - 致力于解决如下问题
   - 容器到容器之间的直接通信
@@ -185,13 +197,14 @@ modprobe ipip   # 加载内核模块
   - Pod到Service之间的通信
   - 集群外部与内部组件之间的通信
 
-#### 容器到容器之间的通信
+### 容器到容器之间的通信
+
 - Pod内的容器是不会跨宿主机的
 - 同一个Pod内的容器共享同一个网络命名空间
 - 他们之间**可以使用localhost进行通讯**(方便从已存在的程序中迁移)
     - 容器1使用 localhost:3306 可以访问容器2的 mysql
 
-#### POD之间的访问
+### POD之间的访问
 
 - 一个Node内的Pod之间的通信
     - Pod1和Pod2都是通过Veth连接到同一个docker0网桥上的
@@ -206,12 +219,11 @@ modprobe ipip   # 加载内核模块
         - **其它增强网络应用**
         - 静态路由的方式
 
-
-### Pod与Service网络实战
+## Pod与Service网络实战
 - pause容器
 - kube-proxy
 
-### CNI网络模型
+## CNI网络模型
 
 - 容器固定IP地址
 - 一个容器多个IP地址
@@ -219,7 +231,8 @@ modprobe ipip   # 加载内核模块
 - ACL控制策略
 - 与SDN集成
 
-#### CNM模型
+### CNM模型
+
 - docker公司提出的Container Network Model（CNM）
 - 由三个组件组成
   - Network Sandbox
@@ -235,7 +248,8 @@ modprobe ipip   # 加载内核模块
     - 可以通过Linux网 桥、VLAN等技术进行实现
     - 一个Network包含多个Endpoint
 
-#### CNI模型
+### CNI模型
+
 - CoreOS公司提出的 Container Network Interface（CNI）
 - **CNI提供了一种应用容器的插件化网络解决方案, 定义对容器网络进行操作和配置的规范，通过插件的形式对CNI接口进行实现**
 - CNI的思想就是在kubelet启动infra容器后，就可以直接调用CNI插件为这个infra容器的Network Namespace配置符合预期的网络栈
@@ -250,6 +264,7 @@ modprobe ipip   # 加载内核模块
   - kubenet Plugin: ：使用bridge和host-local CNI插件实现一个基本的 cbr0
 
 ### K8s网络策略
+
 - 网络策略:基于Pod的源IP的访问控制列表, 限制的是Pod之间的访问
 - 引入Network Policy机制
 - 对Pod间的网络通信进行限制和准入控制
@@ -262,35 +277,57 @@ modprobe ipip   # 加载内核模块
     - port
     - cidr
 
-### 网络组件
-GCE里面是现成的网络模型, 在私有云里搭建Kubernetes集群，就不能假定这种网络 已经存在了.
-需要自己实现这个网络假设，将不同节点上的Docker 容器之间的互相访问先打通，然后运行Kubernetes
-介绍几个常见的 网络组件及其安装配置方法包括
-- Flannel
-    - 它能协助Kubernetes，给每一个Node上的Docker容器都分配互 相不冲突的IP地址。
-    - 它能在这些IP地址之间建立一个覆盖网络（Overlay Network）,通过这个覆盖网络，将数据包原封不动地传递到目标容器内
-- Open vSwitch
-- 直接路由: 
-    - 可以通过部署MultiLayer Switch(MLS)来实现这一点
-- Calico： 一个基于BGP的纯三层的网络方案
-- Canal: 是calico和flannel的结合
+## 网络插件
 
+- GCE里面是现成的网络模型, 在私有云里搭建Kubernetes集群，就不能假定这种网络已经存在了.
+- 需要自己实现这个网络假设，将不同节点上的Docker容器之间的互相访问先打通，然后运行Kubernetes
 
-#### flannel
+- 介绍几个常见的 网络组件及其安装配置方法包括
+    - Flannel
+        - 它能协助Kubernetes，给每一个Node上的Docker容器都分配互 相不冲突的IP地址。
+        - 它能在这些IP地址之间建立一个覆盖网络（Overlay Network）,通过这个覆盖网络，将数据包原封不动地传递到目标容器内
+    - Open vSwitch
+    - 直接路由: 
+        - 可以通过部署MultiLayer Switch(MLS)来实现这一点
+    - Calico： 一个基于BGP的纯三层的网络方案
+    - Canal: 是calico和flannel的结合
 
-- 私有udp:  tun + udp, 效率不高
-- vxlan:  主流
-- Host-Gateway: 性能最好, 不能跨二层网络
+### flannel 插件鼻祖
+
+#### udp 模式
+
+![](http://assets.processon.com/chart_image/61c7ed937d9c0830226e6cbb.png)
+
+- docker1(10.1.1.10)向docker2(10.1.2.10)发包过程
+    - docker1发现目标地址10.1.2.10不在同一网段, 通过docker1的默认路由,发给网桥
+    - 网桥查看宿主机路由表, 需要发送给fannel0接口(fannel创建的路由)
+    - fannel0会把数据包交给创建该设备的应用程序fanneld
+    - (fanneld从etcd中知道10.1.2.0/24子网分配给了node2)
+    - fanneld收到包后判断目标后，封装udp包，udp目标为:192.158.1.11:8285
+    - 数据到达192.158.1.11:8285, fanneld侦听的8285, 收到包后进行解包, 并发往fannel0接口
+    - 根据宿主机路由, 发往网桥
+    - 网桥最终找到了docker2
+- tun + udp
+- 性能低
+
+#### vxlan 模式
+
+- 当前k8s只支持单网络, 所以在三层网络上只有1个vxlan网络
+- 使用vxlan进行二层互通
+- 相当于udp的封解包过程放到了内核态
+
+#### Host-Gateway
+
+- 性能最好, 不能跨二层网络
 - 大二层
 
 ``` bash
 ip -d link show flannel0  # 查看接口信息
 
-
 ```
 
 
-#### Calico
+### Calico
 
 ##### vRouter模式
 
@@ -318,18 +355,18 @@ ip -d link show flannel0  # 查看接口信息
 
 - ipip
 
-#### Weave
+### Weave
 
 - 创建虚拟网络, 使用gossip协议(是基于流行病传播方式的节点或者进程之间信息交换的协议)\
 - 加密
 
-#### Cilium
+### Cilium
 
 - 基于IP/端口的防火墙方式在微服务架构中的网络和安全面临一系列限制
 - BPF
     - 将BPF字节码动态插入Linux内核，为工作负载提供透明的网络链接保护、负载均衡、安全和可观测性支持
 
-#### Canal
+### Canal
 
 - 业界还是会习惯性地将Flannel和Calico的组成称为“Canal”
 
