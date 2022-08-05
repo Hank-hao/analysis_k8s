@@ -134,15 +134,46 @@ modprobe ipip   # 加载内核模块
 #### vxlan
 
 - fdb即二层mac表
+- vxlan接口, 也叫vtep
+- 每个vxlan报文多54字节开销
+
+##### 点对点的vxlan
+
+- 两端都要配置
+```bash
+ip linke add vxlan0 type vxlan id 42 dstport 4789 remote 192.168.1.3 local 192.168.1.2 dev eth0
+# dstport, vtep通讯端口, iana分配4789, linux默认8472
+# remote, 对端eth0 ip地址?
+# local, 本端eth0 ip地址?
+ip -d link show vxlan0      # 查看接口
+ip addr add 172.17.1.2/24 dev vxlan0  # 为vxlan0网卡分配ip
+ip link set vxlan0 up       # 启用vxlan0网卡
+ip route                    # 查看路由表
+bridge fdb show dev vxlan0  # 查看接口转发表
+```
+
+##### 多播模式的vxlan
 
 ```bash
+ip link add vxlan0 type vxlan id 42 group 239.1.1.1 local 192.168.1.2 dstport 4789 dev eth0
+# group, 组播地址
+# local, 本端eth0 ip地址? 加入组播组
 
-# 创建名为vxlan0的接口, 也是vtep
-ip link add vxlan0 type vxlan id 42 group 239.1.1.1 dev ens33 dstport 4789
 ip link delete vxlan0       # 删除接口
 ip -d link show vxlan0      # 查看接口
 bridge fdb show dev vxlan0  # 查看接口转发表
 ```
+
+##### 多播模式的vxlan+网桥
+
+- 多虚机多容器情况下
+- 容器的veth以及vxlan接口都连接到网桥, 主机接口加入到组播组
+
+##### 分布式控制中心
+
+- **多播方式带来的报 文浪费，在实际生产中VXLAN的多播模式很少被采用**
+- 分布式控制中心保存提前规划的组网信息, 如etcd
+
 
 
 #### macvlan
