@@ -65,5 +65,11 @@ kubectl create namespace <name>
 ```bash
 ```
 
+
+### 镜像
+
+- Harbor
+- Nexus
+
 ## 应用链路监控(skywalking/zipkin)
 
