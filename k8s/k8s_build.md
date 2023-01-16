@@ -4,7 +4,18 @@
 
 ## 代码生成器
 
+## build
 
+
+- https://github.com/kubernetes/kubernetes/blob/master/build/README.md
+- https://cloud.tencent.com/developer/article/1433219
+
+```bash
+
+KUBE_BUILD_PLATFORMS=linux/amd64 make all
+KUBE_BUILD_PLATFORMS=linux/amd64 make WHAT=cmd/kube-apiserver
+
+```
 
 
 

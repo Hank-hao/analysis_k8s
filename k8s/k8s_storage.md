@@ -61,4 +61,7 @@ Kubernetes从1.9版本开始引入容器存储接口Container Storage Interface�
 
 
 ### CSI存储机制详解
+
 用于在Kubernetes和外部存储系统之间建立一套 标准的存储管理接口 
+
+https://cloud.tencent.com/developer/news/731936

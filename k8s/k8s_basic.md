@@ -80,6 +80,9 @@
     - POD副本启动顺序是受控的
     - 使用持久化的存储卷(PV/PVC)
 
+### DaemonSet
+
+
 ### Service
 
 #### 概述
@@ -105,7 +108,7 @@
 - Node IP网, POD IP网, Cluster IP网间的通讯。 采用的是Kubernetes自己设计的一种编程方式的特殊路由规则。
 - NodePort方式
     - 集群外通过 NodeIP:NodePort 方式
-    - 通常需要集群外的负载均衡来均衡Node见的访问
+    - 通常需要集群外的负载均衡来均衡Node间的访问
 
 ### Ingress
 
@@ -120,6 +123,9 @@
 - Job也控制一组Pod容器。从这个角度来看，Job也是一种特殊的Pod副本自动控制器
 - Job所控制的Pod副本是短暂运行的，可以将其视为一组 Docker容器，其中的每个Docker容器都仅仅运行一次
 - Job所控制的Pod副本的工作模式能够多实例并行计算
+
+### CronJob
+
 
 ### Volume(共享卷)
 

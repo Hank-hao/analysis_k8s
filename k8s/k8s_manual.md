@@ -25,7 +25,7 @@ kubectl [command] [TYPE] [NAME] [flags]
 
 # get
 kubectl get all                           # 查看所有资源
-kubectl get pod                           # 查看pod资源
+kubectl get pod -n namespace              # 查看pod资源
 kubectl get pod --show-labels             # 查看pod资源及其标签
 
 # describe
@@ -36,7 +36,7 @@ kubectl describe pod hello-minikube
 kubectl logs nginx
 
 # 返回pod ruby中已经停止的容器web-1的日志快照
-kubectl logs -p -c ruby web-1
+kubectl logs -p -c ruby web-1 -n namespace
 
 # 持续输出pod ruby中的容器web-1的日志
 kubectl logs -f -c ruby web-1
@@ -62,9 +62,18 @@ kubectl create namespace <name>
 - https://www.kubernetes.org.cn/deployment
 - https://www.mirantis.com/blog/introduction-to-yaml-creating-a-kubernetes-deployment/
 - https://www.cnblogs.com/wzs5800/p/13534942.html
+
 ```bash
+Deployment定义的 template 字段, 也叫PodTemplate(Pod模板)
+Deployment控制器定义, 包括控制器定义(包括期望状态), 被控制对象模板组成
+Deployment 控制 ReplicaSet(版本), ReplicaSet 控制 Pod(副本数)
 ```
 
+
+### k8s 服务灰度
+
+- 发布不同的deployment, 实现金丝雀部署, 能否控制请求量?
+- 
 
 ### 镜像
 
